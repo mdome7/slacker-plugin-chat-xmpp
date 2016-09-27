@@ -71,12 +71,11 @@ public class SlackCollector implements RequestCollector, ChatManagerListener, Ch
         this.handler = handler;
         xmpp.login();
         try {
-            conn.login();
             ChatManager.getInstanceFor(conn).addChatListener(this);
             joinRooms();
             logger.info("Slack: connected={}, authenticated={}", conn.isAuthenticated(), conn.isAuthenticated());
-        } catch (XMPPException | SmackException | IOException e) {
-            throw new IllegalStateException("Cannot initialize SlackChat - " + e.getMessage(), e);
+        } catch (SmackException e) {
+            throw new IllegalStateException("Cannot initialize Slack - " + e.getMessage(), e);
         }
     }
 
