@@ -5,13 +5,13 @@
     <artifactId>slacker-plugin-chat-xmpp</artifactId>
     <name>slacker-plugin-chat-xmpp</name>
     <packaging>jar</packaging>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.1-SNAPSHOT</version>
 
     <properties>
         <maven.compiler.source>1.7</maven.compiler.source>
         <maven.compiler.target>1.7</maven.compiler.target>
         <smack-version>4.1.0-rc2</smack-version>
-        <slacker.version>1.4-SNAPSHOT</slacker.version>
+        <slacker.version>3.0-SNAPSHOT</slacker.version>
     </properties>
 
     <dependencies>

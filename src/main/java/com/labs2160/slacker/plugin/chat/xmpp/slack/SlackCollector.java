@@ -1,14 +1,8 @@
 package com.labs2160.slacker.plugin.chat.xmpp.slack;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.StringTokenizer;
-import java.util.concurrent.Future;
-
 import com.labs2160.slacker.api.*;
+import com.labs2160.slacker.api.response.SlackerOutput;
+import com.labs2160.slacker.api.response.TextOutput;
 import com.labs2160.slacker.plugin.chat.xmpp.OutputUtil;
 import com.labs2160.slacker.plugin.chat.xmpp.XMPPResource;
 import org.jivesoftware.smack.MessageListener;
@@ -28,6 +22,10 @@ import org.jivesoftware.smackx.muc.MultiUserChatManager;
 import org.jivesoftware.smackx.xhtmlim.packet.XHTMLExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 /**
  * Collector that listens for requests via messages in Slack.
@@ -88,11 +86,6 @@ public class SlackCollector implements RequestCollector, ChatManagerListener, Ch
     @Override
     public boolean isActive() {
         return conn.isConnected();
-    }
-
-    @Override
-    public SchedulerTask[] getSchedulerTasks() {
-        return new SchedulerTask[0];
     }
 
     public XMPPConnection getConnection() {
@@ -173,8 +166,12 @@ public class SlackCollector implements RequestCollector, ChatManagerListener, Ch
                     requestTokens = Arrays.copyOfRange(requestTokens, 1, requestTokens.length);
                 }
 
-                Future<SlackerResponse> future = handler.handle(new SlackerRequest("slackchat", requestTokens));
-                responseMsg = createResponseMessage(future.get());
+                try {
+                    Future<SlackerOutput> future = handler.handle(new SlackerRequest("slackchat", requestTokens));
+                    responseMsg = createResponseMessage(future.get());
+                } catch (ExecutionException ee) { // ExecutionException is just a wrapper
+                    throw ee.getCause() != null ? (Exception) ee.getCause() : ee;
+                }
             }
         } catch (NoArgumentsFoundException e) {
             logger.warn("Missing arguments {}, request={} ({})", msg.getFrom(), msg.getBody(), e.getMessage());
@@ -192,15 +189,19 @@ public class SlackCollector implements RequestCollector, ChatManagerListener, Ch
         return responseMsg;
     }
 
-    private Message createResponseMessage(SlackerResponse response) {
+    private Message createResponseMessage(SlackerOutput output) {
         Message responseMsg = new Message();
-        responseMsg.setBody(response.getMessage());
+        if (output instanceof TextOutput) {
+            XHTMLExtension xhtmlExtension = new XHTMLExtension();
+            TextOutput to = (TextOutput) output;
+            responseMsg.setBody(to.getMessage());
+            String html = OutputUtil.plainTextToJabberHtml(to.getMessage());
+            xhtmlExtension.addBody(html);
+            responseMsg.addExtension(xhtmlExtension);
+        } else {
+            responseMsg.setBody("Error - response type " + output.getClass().getSimpleName() + " not yet supported");
+        }
 
-        XHTMLExtension xhtmlExtension = new XHTMLExtension();
-        String html = OutputUtil.cleanResponse(response);
-        logger.debug(html);
-        xhtmlExtension.addBody(html);
-        responseMsg.addExtension(xhtmlExtension);
         return responseMsg;
     }
 }
